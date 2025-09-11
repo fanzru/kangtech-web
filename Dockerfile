@@ -11,7 +11,7 @@ COPY package.json bun.lockb ./
 COPY prisma ./prisma/
 
 # Install ALL dependencies (including devDependencies needed for build)
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Build aplikasi
 FROM base AS builder
