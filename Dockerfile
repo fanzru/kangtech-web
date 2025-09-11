@@ -1,50 +1,58 @@
+# Use the official Bun image as base
+FROM oven/bun:1.1.38-alpine AS base
 
-# Stage 1: Build the application
-# Use Node.js 20 as the base image for the build environment
-FROM node:20-alpine AS builder
-
-# Install required packages and Bun
-RUN apk add --no-cache curl bash
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
-
-# Set the working directory inside the container
+# Install dependencies only when needed
+FROM base AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json and bun.lock, then install dependencies using Bun
-COPY package.json bun.lock ./
+# Install dependencies based on the preferred package manager
+COPY package.json bun.lockb* ./
 RUN bun install
 
-# Copy all source files from the host to the container
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Create a production build of the application
-# Use Bun to run the build command
+# Generate Prisma client
+RUN bunx prisma generate
+
+# Build the application
 RUN bun run build
 
-# Remove dev dependencies to reduce image size
-RUN bun install --production --frozen-lockfile
-
-# Stage 2: Run the application
-# Use distroless image for maximum security and minimal size
-FROM gcr.io/distroless/nodejs20-debian12 AS runner
-
-# Set environment variables for production
-ENV NODE_ENV=production
-
-# Set the working directory for the runner stage
+# Production image, copy all the files and run next
+FROM base AS runner
 WORKDIR /app
 
-# Copy the necessary files from the builder stage
-# This creates a minimal image for production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+ENV NODE_ENV production
+# Uncomment the following line in case you want to disable telemetry during runtime.
+# ENV NEXT_TELEMETRY_DISABLED 1
 
-# Expose the port that Next.js will use
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+
+# Set the correct permission for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
 EXPOSE 3000
 
-# Start the Next.js server
-CMD ["node_modules/.bin/next", "start"]
+ENV PORT 3000
+# set hostname to localhost
+ENV HOSTNAME "0.0.0.0"
 
+# server.js is created by next build from the standalone output
+# https://nextjs.org/docs/pages/api-reference/next-config-js/output
+CMD ["node", "server.js"]
