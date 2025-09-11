@@ -41,7 +41,6 @@ COPY --from=builder --chown=nonroot:nonroot /app/public ./public
 COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
 COPY --from=builder --chown=nonroot:nonroot /app/.next/static ./.next/static
 COPY --from=builder --chown=nonroot:nonroot /app/prisma ./prisma
-COPY --from=builder --chown=nonroot:nonroot /app/src/generated ./src/generated
 
 # Copy node_modules untuk prisma client
 COPY --from=builder --chown=nonroot:nonroot /app/node_modules/.prisma ./node_modules/.prisma
