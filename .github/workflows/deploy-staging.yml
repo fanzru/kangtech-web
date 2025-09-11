@@ -17,10 +17,10 @@ jobs:
         run: docker login registry.fanzru.dev -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and tag Docker image
-        run: docker build -t registry.fanzru.dev/next-template:staging .
+        run: docker build -t registry.fanzru.dev/kangtech-web:staging .
 
       - name: Push image to registry
-        run: docker push registry.fanzru.dev/next-template:staging
+        run: docker push registry.fanzru.dev/kangtech-web:staging
 
       - name: Deploy to staging via Portainer webhook
         env:
