@@ -17,7 +17,7 @@ jobs:
         run: docker login registry.fanzru.dev -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and tag Docker image
-        run: docker build -t registry.fanzru.dev/kangtech-web:staging .
+        run: docker build --build-arg NODE_ENV=staging --build-arg PORT=3011 -t registry.fanzru.dev/kangtech-web:staging .
 
       - name: Push image to registry
         run: docker push registry.fanzru.dev/kangtech-web:staging
